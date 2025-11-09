@@ -5,27 +5,35 @@ import "./index.css";
 import SubmitFeedback from "./pages/SubmitFeedback";
 import ViewFeedback from "./pages/ViewFeedback";
 import AdminDashboard from "./pages/AdminDashboardPage";
-import { MOCK_FEEDBACK_DATA } from "./data/mockFeedback";
-import { simulateAPICall } from "./utils/simulateAPICall";
+import { fetchAllFeedback } from "./utils/api";
 
 const App = () => {
   const [page, setPage] = useState("home");
   const [userId] = useState(crypto.randomUUID());
-  const [feedbackList, setFeedbackList] = useState(MOCK_FEEDBACK_DATA);
+  const [feedbackList, setFeedbackList] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const ADMIN_PASSWORD = "gudayadmin";
 
-  const fetchFeedbackData = useCallback(async () => {
-    const { data } = await simulateAPICall(feedbackList);
-    data.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    setFeedbackList(data);
-  }, [feedbackList]);
+  const loadFeedbackData = useCallback(async () => {
+    try {
+      const allFeedback = await fetchAllFeedback();
+
+      allFeedback.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+
+      setFeedbackList(allFeedback);
+    } catch (error) {
+      console.error("Failed to load feedback data:", error);
+    }
+  }, []);
 
   useEffect(() => {
-    fetchFeedbackData();
-  }, [fetchFeedbackData]);
+    loadFeedbackData();
+  }, [loadFeedbackData]);
 
   const handleAdminAccess = () => {
     const errorElement = document.getElementById("password-error");
@@ -35,6 +43,7 @@ const App = () => {
       setPage("admin");
       setShowPasswordPrompt(false);
       setPasswordInput("");
+      loadFeedbackData();
     } else {
       if (errorElement)
         errorElement.textContent = "Incorrect password. Access denied.";
@@ -47,6 +56,7 @@ const App = () => {
     setPage("home");
     setShowPasswordPrompt(false);
     setPasswordInput("");
+    loadFeedbackData();
   };
 
   let content;
@@ -68,6 +78,7 @@ const App = () => {
         <AdminDashboard
           feedbackList={feedbackList}
           setFeedbackList={setFeedbackList}
+          refetchFeedback={loadFeedbackData}
         />
       ) : (
         <div className="text-center p-10 mt-8 bg-red-50 border border-red-300 rounded-xl text-red-600 shadow-lg">
